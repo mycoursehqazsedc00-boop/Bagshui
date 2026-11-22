@@ -808,7 +808,7 @@ Bagshui:AddComponent(function()
       _G.this.bagshuiData
       and _G.this.bagshuiData.item
       and _G.this.bagshuiData.item.bagshuiStockState ~= BS_ITEM_STOCK_STATE.NO_CHANGE
-      and _G.GetTime() - _G.this.bagshuiData.lastStockStateRefresh > 60
+      and _G.GetTime() - (_G.this.bagshuiData.lastStockStateRefresh or 0) > 60
       and _G.this.bagshuiData.type == BS_UI_ITEM_BUTTON_TYPE.ITEM
     then
       self.ui:UpdateItemButtonStockState(_G.this)
@@ -841,10 +841,17 @@ Bagshui:AddComponent(function()
 
     -- Clear state tracking variables when the mouse isn't present.
     if not _G.this.bagshuiData.mouseIsOver then
-      _G.this.bagshuiData.tooltipCooldownUpdate = nil
-      _G.this.bagshuiData.altKeyDown = nil
-      _G.this.bagshuiData.controlKeyDown = nil
-      _G.this.bagshuiData.shiftKeyDown = nil
+      if
+        _G.this.bagshuiData.tooltipCooldownUpdate ~= nil
+        or _G.this.bagshuiData.altKeyDown ~= nil
+        or _G.this.bagshuiData.controlKeyDown ~= nil
+        or _G.this.bagshuiData.shiftKeyDown ~= nil
+      then
+        _G.this.bagshuiData.tooltipCooldownUpdate = nil
+        _G.this.bagshuiData.altKeyDown = nil
+        _G.this.bagshuiData.controlKeyDown = nil
+        _G.this.bagshuiData.shiftKeyDown = nil
+      end
       return
     end
 

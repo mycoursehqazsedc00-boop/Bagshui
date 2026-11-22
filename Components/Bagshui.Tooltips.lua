@@ -675,7 +675,13 @@ Bagshui:AddComponent(function()
   local hookTooltipScripts = {
 
     OnUpdate = function()
-      Bagshui:ManageInfoTooltip(_G.this.bagshuiData.tooltip)
+      local bd = _G.this.bagshuiData
+      bd.infoTooltipUpdateElapsed = (bd.infoTooltipUpdateElapsed or 0) + (_G.arg1 or 0)
+      if bd.infoTooltipUpdateElapsed < 0.05 then
+        return
+      end
+      bd.infoTooltipUpdateElapsed = 0
+      Bagshui:ManageInfoTooltip(bd.tooltip)
     end,
 
     OnShow = function()

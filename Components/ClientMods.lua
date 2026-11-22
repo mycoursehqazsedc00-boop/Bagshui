@@ -6,12 +6,12 @@
 -- before and nothing in this file raises an error (all mod calls are pcall-wrapped).
 --
 -- Supported mods:
--- - SuperWoW      : file import/export fallback (ImportFile/ExportFile), charges (see Inventory.Cache.lua).
--- - Nampower      : item level via GetItemStatsField().
--- - ClassicAPI    : quest-starter detection via C_Container.GetContainerItemQuestInfo().
+-- - SuperWoW      : file import/export (ImportFile/ExportFile), charges (see Inventory.Cache.lua).
+-- - Nampower      : item level via GetItemStatsField(), CustomData file import/export fallback.
+-- - ClassicAPI    : quest-starter detection via C_Container.GetContainerItemQuestInfo(), memory report.
 -- - UnitXP_SP3    : taskbar flash when bags fill while the game is in the background.
 -- - VanillaHelpers: file import/export fallback (ReadFile/WriteFile).
--- - WeirdUtils    : DLL-only (no Lua surface), reported as not detectable.
+-- - WeirdUtils    : detected via GetWeirdUtilsVersion() (no bag-related Lua API used).
 
 Bagshui:AddComponent(function()
   local ClientMods = {
@@ -21,6 +21,7 @@ Bagshui:AddComponent(function()
     classicapi = false,
     unitxp = false,
     vanillahelpers = false,
+    weirdutils = false,
 
     -- Human-readable version strings (when the mod exposes one).
     versions = {},
@@ -30,6 +31,8 @@ Bagshui:AddComponent(function()
     canGetQuestInfo = false,
     canNotify = false,
     canReadWriteFiles = false,
+    canUseNampowerFiles = false,
+    postWorldDetected = false,
 
     -- Item level cache (item IDs never change level).
     itemLevelCache = {},
@@ -62,8 +65,16 @@ Bagshui:AddComponent(function()
 
   --- Detect which client mods are present. Safe to call repeatedly.
   function ClientMods:Detect()
-    -- SuperWoW (DLL injection; no addon to check for).
-    self.superwow = BS_SUPER_WOW_LOADED and true or false
+    -- SuperWoW (DLL injection; re-check globals in case initialization completed late).
+    local hasSuperWow = (
+      _G.BS_SUPER_WOW_LOADED
+      or (_G.SUPERWOW_VERSION ~= nil)
+      or (type(_G.SetAutoloot) == "function")
+    ) and true or false
+    if hasSuperWow and not _G.BS_SUPER_WOW_LOADED then
+      _G.BS_SUPER_WOW_LOADED = true
+    end
+    self.superwow = hasSuperWow
     self.versions.superwow = self.superwow and tostring(_G.SUPERWOW_VERSION or "?") or nil
 
     -- Nampower.
@@ -109,6 +120,24 @@ Bagshui:AddComponent(function()
       and type(_G.GetItemDisplayID) == "function"
     )
 
+    -- WeirdUtils: exposes GetWeirdUtilsVersion() -> { module = version }.
+    self.weirdutils = (type(_G.GetWeirdUtilsVersion) == "function")
+    if self.weirdutils then
+      local ok, mods = pcall(_G.GetWeirdUtilsVersion)
+      if ok and type(mods) == "table" then
+        local names = {}
+        for modName, _ in pairs(mods) do
+          table.insert(names, tostring(modName))
+        end
+        table.sort(names)
+        self.versions.weirdutils = table.getn(names) > 0 and table.concat(names, ", ") or "loaded"
+      else
+        self.versions.weirdutils = "?"
+      end
+    else
+      self.versions.weirdutils = nil
+    end
+
     -- Capabilities.
     self.canGetItemLevel = self.nampower and (type(_G.GetItemStatsField) == "function")
     self.canGetQuestInfo = self.classicapi
@@ -116,9 +145,13 @@ Bagshui:AddComponent(function()
       and type(_G.C_Container.GetContainerItemQuestInfo) == "function"
       and type(_G.C_Container.GetContainerItemID) == "function"
     self.canNotify = self.unitxp
+    self.canUseNampowerFiles = self.nampower
+      and type(_G.WriteCustomFile) == "function"
+      and type(_G.ReadCustomFile) == "function"
     self.canReadWriteFiles = (
       (type(_G.ExportFile) == "function" and type(_G.ImportFile) == "function")
       or self.vanillahelpers
+      or self.canUseNampowerFiles
     )
   end
 
@@ -142,13 +175,17 @@ Bagshui:AddComponent(function()
       return cached or nil
     end
     -- GetItemStatsField returns a plain value for a single field.
-    local ok, level = pcall(_G.GetItemStatsField, itemId, "itemLevel")
-    level = ok and tonumber(level) or nil
+    local ok, rawLevel = pcall(_G.GetItemStatsField, itemId, "itemLevel")
+    local level = ok and tonumber(rawLevel) or nil
     if level and level > 0 then
       self.itemLevelCache[itemId] = level
       return level
     end
-    self.itemLevelCache[itemId] = false
+    -- Only cache `false` when the lookup succeeded with 0 (explicitly no item level);
+    -- if `rawLevel` was nil (e.g. uncached item) or pcall failed, allow retrying later.
+    if ok and level == 0 then
+      self.itemLevelCache[itemId] = false
+    end
     return nil
   end
 
@@ -208,6 +245,9 @@ Bagshui:AddComponent(function()
     if (type(text) ~= "string" or text == "") and self.vanillahelpers then
       text = safeCall(_G.ReadFile, fileName)
     end
+    if (type(text) ~= "string" or text == "") and self.canUseNampowerFiles then
+      text = safeCall(_G.ReadCustomFile, fileName)
+    end
     if type(text) == "string" and text ~= "" then
       return text
     end
@@ -225,7 +265,7 @@ Bagshui:AddComponent(function()
     end
     if type(_G.ExportFile) == "function" then
       pcall(_G.ExportFile, fileName, text)
-      if self:ReadTextFile(fileName) == text then
+      if safeCall(_G.ImportFile, fileName) == text then
         return true, "SuperWoW"
       end
     end
@@ -234,6 +274,12 @@ Bagshui:AddComponent(function()
       pcall(_G.WriteFile, fileName, "w", text)
       if safeCall(_G.ReadFile, fileName) == text then
         return true, "VanillaHelpers"
+      end
+    end
+    if self.canUseNampowerFiles then
+      pcall(_G.WriteCustomFile, fileName, text, "w")
+      if safeCall(_G.ReadCustomFile, fileName) == text then
+        return true, "Nampower"
       end
     end
     return false
@@ -269,11 +315,11 @@ Bagshui:AddComponent(function()
       )
     end
     add("SuperWoW", self.superwow, self.versions.superwow, " - item charges, file import/export")
-    add("Nampower", self.nampower, self.versions.nampower, " - item level rule function")
-    add("ClassicAPI", self.classicapi, self.versions.classicapi, " - quest-starter rule function")
+    add("Nampower", self.nampower, self.versions.nampower, " - item level rule & tooltip, CustomData file fallback")
+    add("ClassicAPI", self.classicapi, self.versions.classicapi, " - quest-starter rule, item cache preload, memory report")
     add("UnitXP_SP3", self.unitxp, nil, " - bags-full taskbar flash")
     add("VanillaHelpers", self.vanillahelpers, nil, " - file import/export fallback")
-    table.insert(lines, "WeirdUtils: not detectable from Lua (DLL-only, no addon-facing API)")
+    add("WeirdUtils", self.weirdutils, self.versions.weirdutils, " - detected (no bag-related API used)")
     return lines
   end
 
@@ -281,17 +327,23 @@ Bagshui:AddComponent(function()
   -- flags in their `conditional` checks.
   ClientMods:Detect()
 
-  --- Event handling: re-detect once the world is up (a mod may have finished initializing late)
-  --- and watch for the "inventory is full" error.
+  --- Event handling: re-detect at login / first world entry (a mod may have finished
+  --- initializing late) and watch for the "inventory is full" error.
   ---@param event string WoW API event.
   ---@param arg1 any First event argument.
   function ClientMods:OnEvent(event, arg1)
-    if event == "PLAYER_ENTERING_WORLD" then
+    if event == "PLAYER_LOGIN" then
       self:Detect()
+    elseif event == "PLAYER_ENTERING_WORLD" then
+      if not self.postWorldDetected then
+        self.postWorldDetected = true
+        self:Detect()
+      end
     elseif event == "UI_ERROR_MESSAGE" and arg1 and arg1 == _G.ERR_INV_FULL then
       self:NotifyBagsFull()
     end
   end
+  Bagshui:RegisterEvent("PLAYER_LOGIN", ClientMods)
   Bagshui:RegisterEvent("PLAYER_ENTERING_WORLD", ClientMods)
   Bagshui:RegisterEvent("UI_ERROR_MESSAGE", ClientMods)
 

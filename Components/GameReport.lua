@@ -30,6 +30,13 @@ Bagshui:AddComponent(function()
     end
 
     addLine("Bagshui Version: " .. BS_VERSION)
+    if type(_G.UpdateAddOnMemoryUsage) == "function" and type(_G.GetAddOnMemoryUsage) == "function" then
+      pcall(_G.UpdateAddOnMemoryUsage)
+      local ok, memKb = pcall(_G.GetAddOnMemoryUsage, "Bagshui")
+      if ok and type(memKb) == "number" then
+        addLine(string.format("Bagshui Memory: %.1f KB", memKb))
+      end
+    end
     addLine("Game Version: " .. table.concat({ _G.GetBuildInfo() }, " ") .. BS_NEWLINE)
     addLine("<details><summary>Addons</summary>" .. BS_NEWLINE)
     addLine("**Client mods:**")

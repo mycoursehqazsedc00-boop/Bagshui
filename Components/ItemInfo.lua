@@ -453,6 +453,12 @@ not validate
         Bagshui:AddTooltipLine(tooltip, itemPropertyDisplay, string.format(L.Symbol_Colon, itemPropertyFriendly))
       end
     end
+    if BsClientMods and BsClientMods.canGetItemLevel and item and item.id then
+      local ilvl = BsClientMods:GetItemLevel(item.id)
+      if ilvl then
+        Bagshui:AddTooltipLine(tooltip, tostring(ilvl), string.format(L.Symbol_Colon, "Item Level"))
+      end
+    end
   end
 
   --- Ensure GetItemInfo will work for an item by forcing it into the local game cache via hidden tooltip load.
@@ -460,6 +466,10 @@ not validate
   function ItemInfo:LoadItemIntoLocalGameCache(itemIdentifier)
     if not itemIdentifier or itemIdentifier == 0 then
       return
+    end
+    local itemId = tonumber(itemIdentifier)
+    if itemId and itemId > 0 and BsClientMods and BsClientMods.classicapi and type(_G.C_Item) == "table" and type(_G.C_Item.RequestLoadItemDataByID) == "function" then
+      pcall(_G.C_Item.RequestLoadItemDataByID, itemId)
     end
     local itemString
     if type(itemIdentifier) == "number" or (type(itemIdentifier) == "string" and tonumber(itemIdentifier)) then

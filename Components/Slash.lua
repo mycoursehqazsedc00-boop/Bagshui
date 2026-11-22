@@ -118,7 +118,7 @@ Bagshui:LoadComponent(function()
   ---@param msg string Message provided by WoW -- this is everything after /bagshui or /bs.
   function Slash:Tokenize(msg)
     BsUtil.TableClear(self.tokens)
-    for word in string.gmatch(msg, "[^%s]+") do
+    for word in string.gfind(msg, "[^%s]+") do
       table.insert(self.tokens, word)
     end
     if self.tokens[1] then
