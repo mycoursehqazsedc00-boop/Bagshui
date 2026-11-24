@@ -298,7 +298,7 @@ Bagshui:AddComponent(function()
 
     -- Anchor info tooltip to left/right/center of tooltip.
     local leftRight = ""
-    if (attachToTooltip:GetNumPoints()) or 0 > 0 then
+    if (attachToTooltip:GetNumPoints() or 0) > 0 then
       local point = attachToTooltip:GetPoint(1)
       leftRight = BsUtil.GetAnchorLeftRight(point)
     end
@@ -376,12 +376,17 @@ Bagshui:AddComponent(function()
 
     -- When one of the tooltips is at the extreme edge, re-anchor the other tooltip
     -- to it so one can't slide under the other.
-    if topTooltip:GetTop() / _G.UIParent:GetEffectiveScale() >= _G.UIParent:GetTop() then
+    local uiScale = _G.UIParent:GetEffectiveScale()
+    local topTooltipTop = topTooltip:GetTop()
+    local bottomTooltipBottom = bottomTooltip:GetBottom()
+    local uiParentTop = _G.UIParent:GetTop()
+    local uiParentBottom = _G.UIParent:GetBottom()
+    if uiScale and uiScale > 0 and topTooltipTop and uiParentTop and (topTooltipTop / uiScale >= uiParentTop) then
       -- Top tooltip is at the top of the screen.
       topTooltip:ClearAllPoints()
       bottomTooltip:ClearAllPoints()
       bottomTooltip:SetPoint("TOP" .. leftRight, topTooltip, "BOTTOM" .. leftRight, 0, BsSkin.infoTooltipYOffset)
-    elseif bottomTooltip:GetBottom() / _G.UIParent:GetEffectiveScale() <= _G.UIParent:GetBottom() then
+    elseif uiScale and uiScale > 0 and bottomTooltipBottom and uiParentBottom and (bottomTooltipBottom / uiScale <= uiParentBottom) then
       -- Bottom tooltip is at the bottom of the screen.
       topTooltip:ClearAllPoints()
       bottomTooltip:ClearAllPoints()
@@ -570,13 +575,14 @@ Bagshui:AddComponent(function()
       -- error thrown that looks like it's a Bagshui issue. In reality, it's
       -- simply that Vanilla WoW doesn't know what to do with quest links unless
       -- an addon steps in and adds hooks to intercept them.
-      local ret, error = pcall(self.bagshuiData.hooked.SetHyperlink, self, link)
-      if error then
+      local ok, retOrErr = pcall(self.bagshuiData.hooked.SetHyperlink, self, link)
+      if not ok then
         -- Display the error without the [Bagshui] prefix so it looks like a
         -- standard game message (which it technically is).
-        Bagshui:ShowErrorMessage(error, nil, nil, nil, nil, nil, nil, nil, true)
+        Bagshui:ShowErrorMessage(retOrErr, nil, nil, nil, nil, nil, nil, nil, true)
+        return nil
       end
-      return ret
+      return retOrErr
     end,
 
     SetInboxItem = function(self, id, attachIndex)
@@ -655,7 +661,7 @@ Bagshui:AddComponent(function()
       -- where it caches the text instead of calling SetHyperlink(), but we *can*
       -- luckily discover the item during the SetOwner() call. Refer to `methods.OnIconEnter`
       -- in aux's gui\auction_listing.lua file to see why this works.
-      if _G.IsAddOnLoaded("aux-addon") then
+      if owner and owner.GetParent and _G.IsAddOnLoaded("aux-addon") then
         local parent = owner:GetParent()
         self.bagshuiData.lastItemString =
           BsItemInfo:ParseItemLink((parent and parent.row and parent.row.record and parent.row.record.link))

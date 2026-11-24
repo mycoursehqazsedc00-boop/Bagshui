@@ -116,7 +116,9 @@ Bagshui:AddComponent(function()
         bagSlotLink = _G.GetInventoryItemLink("player", _G.ContainerIDToInventoryID(bagNum))
         if bagSlotLink ~= nil then
           _, _, bagItemCode = string.find(bagSlotLink, "(%d+):")
-          _, _, _, _, _, bagType, _, _, bagTexture = _G.GetItemInfo(bagItemCode)
+          if bagItemCode then
+            _, _, _, _, _, bagType, _, _, bagTexture = _G.GetItemInfo(bagItemCode)
+          end
         end
       end
 
@@ -256,8 +258,8 @@ bagInfo.numSlots > 0 and (not bagInfo.name or not bagInfo.type)
               not BsItemInfo:Get(
                 nowItemLink, -- itemIdentifier
                 item, -- itemInfoTable
-                false, -- initialize
                 (preItemLink ~= nowItemLink), -- reinitialize
+                false, -- initialize
                 false, -- forceIntoLocalGameCache
                 self -- Inventory class instance
               )

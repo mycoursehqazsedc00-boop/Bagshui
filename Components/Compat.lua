@@ -14,7 +14,7 @@ Bagshui:AddComponent(function()
       -- Don't do anything until pfUI firstrun is done.
       if pfUI.firstrun and pfUI.firstrun.steps then
         for _, step in pairs(pfUI.firstrun.steps) do
-          if not _G.pfUI_init[step.name] then
+          if not _G.pfUI_init or not _G.pfUI_init[step.name] then
             self:QueueClassCallback(self, self.CheckCompat, 0.5)
             return
           end

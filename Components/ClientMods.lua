@@ -67,12 +67,13 @@ Bagshui:AddComponent(function()
   function ClientMods:Detect()
     -- SuperWoW (DLL injection; re-check globals in case initialization completed late).
     local hasSuperWow = (
-      _G.BS_SUPER_WOW_LOADED
+      Bagshui.environment.BS_SUPER_WOW_LOADED
+      or _G.BS_SUPER_WOW_LOADED
       or (_G.SUPERWOW_VERSION ~= nil)
       or (type(_G.SetAutoloot) == "function")
     ) and true or false
-    if hasSuperWow and not _G.BS_SUPER_WOW_LOADED then
-      _G.BS_SUPER_WOW_LOADED = true
+    if hasSuperWow then
+      Bagshui.environment.BS_SUPER_WOW_LOADED = true
     end
     self.superwow = hasSuperWow
     self.versions.superwow = self.superwow and tostring(_G.SUPERWOW_VERSION or "?") or nil
@@ -266,7 +267,7 @@ Bagshui:AddComponent(function()
     if type(_G.ExportFile) == "function" then
       pcall(_G.ExportFile, fileName, text)
       if safeCall(_G.ImportFile, fileName) == text then
-        return true, "SuperWoW"
+        return true, (self.superwow and "SuperWoW" or (self.nampower and "Nampower" or "ExportFile"))
       end
     end
     if self.vanillahelpers then

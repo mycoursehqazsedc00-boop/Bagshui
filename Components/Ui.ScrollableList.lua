@@ -795,15 +795,15 @@ Bagshui:AddComponent(function()
       BsItemInfo:InitializeItem(entryInfo, true)
 
       -- When entry is already a Bagshui item, don't call GetItemInfo again.
-      if type(entry) == "table" and type(entry.bagshuiInventoryType) then
+      if type(entry) == "table" and entry.bagshuiInventoryType ~= nil then
         BsUtil.TableCopy(entry, entryInfo)
       else
         -- Obtain item info - reuse the itemButton's info table for this
         BsItemInfo:Get(
           entry, -- itemIdentifier
           entryInfo, -- itemInfoTable
-          true, -- initialize
-          false, -- reinitialize
+          true, -- reinitialize
+          false, -- initialize
           true -- forceIntoLocalGameCache
         )
       end

@@ -110,7 +110,7 @@ Bagshui:AddComponent(function()
           objectiveText, itemType = _G.GetQuestLogLeaderBoard(i)
 
           -- We only care if type is item/object (not monster, event, etc.).
-          if itemType ~= nil and (itemType == "item" or itemType == "object") then
+          if objectiveText and itemType ~= nil and (itemType == "item" or itemType == "object") then
             -- Parse and store the item information from the objective text, which is formatted as:
             -- `<Item Name>: <Number Obtained>/<Total Needed>`
             _, _, itemName, numObtained, numNeeded = string.find(objectiveText, "(.+): (%d+)/(%d+)")

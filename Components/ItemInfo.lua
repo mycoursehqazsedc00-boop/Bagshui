@@ -82,8 +82,8 @@ Bagshui:LoadComponent(function()
   --- * `itemLink`
   ---@param itemIdentifier string|number|nil Item ID, link, or string. Allowed to be nil for empty slots.
   ---@param itemInfoTable table Table that will be filled with item information.
-  ---@param initialize boolean? When true, always wipe the provided `itemInfoTable` before doing anything else.
   ---@param reinitialize boolean? `itemInfoTable` will be wiped after a successful call to `GetItemInfo()` when this is true.
+  ---@param initialize boolean? When true, always wipe the provided `itemInfoTable` before doing anything else.
   ---@param forceIntoLocalGameCache boolean? When true, call `LoadItemIntoLocalGameCache()` before doing anything else.
   ---@param inventory table? Inventory class instance associated with this item.
   ---@return boolean infoRetrievalSuccess # False if `GetItemInfo()` returned nil.
@@ -206,7 +206,12 @@ Bagshui:LoadComponent(function()
       -- can be sorted as "Helmet Amazing Bear the of" instead of "Bear the of Helmet Amazing".
       if itemLinkWithoutRandomSuffix ~= nil then
         itemBaseName = _G.GetItemInfo(itemLinkWithoutRandomSuffix)
-        itemSuffixName = BsUtil.Trim(string.gsub(itemName, itemBaseName, ""))
+        if itemBaseName and itemBaseName ~= "" then
+          local startPos, endPos = string.find(itemName, itemBaseName, 1, true)
+          if startPos then
+            itemSuffixName = BsUtil.Trim(string.sub(itemName, 1, startPos - 1) .. string.sub(itemName, endPos + 1))
+          end
+        end
       end
       item.baseName = itemBaseName or BS_ITEM_SKELETON.baseName
       item.suffixName = itemSuffixName or BS_ITEM_SKELETON.suffixName
@@ -218,7 +223,8 @@ Bagshui:LoadComponent(function()
     -- Construct an item link if the itemIdentifier wasn't one.
     -- itemLink must be allowed to be nil for empty slot identification.
     if itemString ~= nil and not string.find(tostring(itemIdentifier), "^|") then
-      local itemQualityColor = _G.ITEM_QUALITY_COLORS[item.quality or 1].hex
+      local qualityColorObj = _G.ITEM_QUALITY_COLORS[item.quality or 1] or _G.ITEM_QUALITY_COLORS[1]
+      local itemQualityColor = qualityColorObj and qualityColorObj.hex or "|cffffffff"
       item.itemLink = itemQualityColor .. "|H" .. itemString .. "|H[" .. (itemName or L.Unknown) .. "]|H|r"
     else
       item.itemLink = itemIdentifier
