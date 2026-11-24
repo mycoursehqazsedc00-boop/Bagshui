@@ -1009,7 +1009,7 @@ Bagshui:LoadComponent(function()
     ["Error_GroupNotFound"] = "Group ID %s not found.",
     ["Error_HearthstoneNotFound"] = "Hearthstone not found.",
     ["Error_ImportInvalidFormat"] = "Import failed: Data was in an unexpected format.`",
-    ["Share_FileUnavailable"] = "File import/export requires the SuperWoW or VanillaHelpers client mod.",
+    ["Share_FileUnavailable"] = "File import/export requires the SuperWoW, Nampower, or VanillaHelpers client mod.",
     ["Share_FileBadName"] = "Please provide a file name using only letters, numbers, dashes, and underscores (example: /bagshui share exportfile mysetup).",
     ["Share_NotReady"] = "Share isn't ready yet; please try again in a few seconds.",
     ["Share_NothingToExport"] = "There are no custom Profiles, Categories, or Sort Orders to export.",
